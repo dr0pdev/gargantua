@@ -1,0 +1,9 @@
+[package]
+name = "gargantua"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+beryllium = "0.13.3"
+bytemuck = "1"
+ogl33 = { version = "0.2.0", features = ["debug_error_checks"] }
