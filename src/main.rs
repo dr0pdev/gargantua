@@ -3,11 +3,12 @@ use macroquad::prelude::*;
 
 // window size
 const WIDTH: i32 = 800;
-const HEIGHT: i32 = 600;
+const HEIGHT: i32 = 800;
 
 // scientific constants
 const G: f64 = 6.6743e-11;
 const SPEED_OF_LIGHT: f64 = 299792458.0;
+const BH_MASS: f64 = 3e28;
 
 // window configuration
 fn window_config() -> Conf {
@@ -52,7 +53,8 @@ struct Ray {
     dr: f64,
     dphi: f64,
     trail: Vec<Vec2>,
-    e: f64, // Energy constant (replaces E from C function)
+    e: f64, // Energy constant
+    disabled: bool,
 }
 
 // implementation of the geodesic right-hand side function
@@ -91,37 +93,33 @@ impl Ray {
     }
 
     fn draw(&self) {
-        draw_rectangle(self.x as f32, self.y as f32, 5., 5., WHITE);
+        if !self.disabled {
+            draw_rectangle(self.x as f32, self.y as f32, 5., 5., WHITE);
+        } else {
+            return;
+        }
 
         for i in 1..self.trail.len() {
-            let alpha = (i as f32 / self.trail.len() as f32) * 0.5;
             draw_rectangle(
                 self.trail[i].x,
                 self.trail[i].y,
                 3.,
                 3.,
                 Color {
-                    r: 1.0,
-                    g: 1.0,
-                    b: 1.0,
-                    a: alpha,
+                    r: 120.,
+                    g: 120.,
+                    b: 120.,
+                    a: 0.1,
                 },
             );
         }
     }
 
     fn push_back(&mut self) {
-        if self.trail.len() % 3 == 0 {
-            self.trail.push(Vec2 {
-                x: self.x as f32,
-                y: self.y as f32,
-            });
-        }
-
-        // Keep trail length manageable
-        if self.trail.len() > 200 {
-            self.trail.remove(0);
-        }
+        self.trail.push(Vec2 {
+            x: self.x as f32,
+            y: self.y as f32,
+        });
     }
 
     fn geodesic(&mut self, bh: &BlackHole) {
@@ -141,10 +139,14 @@ impl Ray {
     }
 
     fn step(&mut self, bh: &BlackHole, _lambda: f64) {
+        if self.disabled == true {
+            return;
+        }
         self.get_polar(bh);
 
         // if the ray is within the schwarzschild radius: STOP
         if self.r < bh.r_s {
+            self.disabled = false;
             return;
         }
 
@@ -184,24 +186,24 @@ async fn main() {
             x: (WIDTH / 2) as f32,
             y: (HEIGHT / 2) as f32,
         },
-        mass: 6e28,
+        mass: BH_MASS,
         r_s: 0.,
     };
 
     let mut rays: Vec<Ray> = vec![];
 
     // Create rays starting from the left side
-    for i in 0..20 {
+    for i in 0..30 {
         let start_y = (HEIGHT as f64 / 4.0) + (i as f64 * HEIGHT as f64 / 40.0);
         let mut ray = Ray {
-            x: 50.0,
+            x: 0.,
             y: start_y,
             e: 1.0, // Initialize energy constant
             ..Default::default()
         };
 
         // Initialize the ray's velocity properly
-        ray.initialize_velocity(&gargantua, Vec2::new(10.0, 0.0));
+        ray.initialize_velocity(&gargantua, Vec2::new(10.0, -1.0));
         rays.push(ray);
     }
 
