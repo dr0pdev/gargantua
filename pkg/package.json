@@ -1,0 +1,15 @@
+{
+  "name": "gargantua",
+  "type": "module",
+  "version": "0.1.0",
+  "files": [
+    "gargantua_bg.wasm",
+    "gargantua.js",
+    "gargantua.d.ts"
+  ],
+  "main": "gargantua.js",
+  "types": "gargantua.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}

@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Gargantua - Black Hole Simulation</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 50%, #16213e 100%);
+            color: white;
+            font-family: 'Arial', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin: 0;
+            background: linear-gradient(45deg, #ff6b35, #f7931e);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header p {
+            margin: 10px 0;
+            opacity: 0.8;
+            font-size: 1.1em;
+        }
+
+        .simulation-container {
+            position: relative;
+            border: 2px solid #333;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 0 30px rgba(255, 107, 53, 0.3);
+        }
+
+        #canvas {
+            display: block;
+            background: radial-gradient(circle, #0a0a0a 0%, #000000 100%);
+        }
+
+        .controls {
+            margin-top: 20px;
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .control-group label {
+            font-size: 0.9em;
+            opacity: 0.8;
+        }
+
+        .control-group input {
+            padding: 8px;
+            border: 1px solid #444;
+            border-radius: 5px;
+            background: #222;
+            color: white;
+            width: 100px;
+        }
+
+        .control-group button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            background: linear-gradient(45deg, #ff6b35, #f7931e);
+            color: white;
+            cursor: pointer;
+            font-weight: bold;
+            transition: transform 0.2s;
+        }
+
+        .control-group button:hover {
+            transform: scale(1.05);
+        }
+
+        .info-panel {
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+            max-width: 600px;
+            text-align: center;
+        }
+
+        .info-panel h3 {
+            margin-top: 0;
+            color: #ff6b35;
+        }
+
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 1.2em;
+            color: #ff6b35;
+        }
+
+        .error {
+            color: #ff4444;
+            background: rgba(255, 68, 68, 0.1);
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🌌 Gargantua</h1>
+        <p>Real-time Black Hole Gravitational Lensing Simulation</p>
+        <p>Built with Rust + WebAssembly + General Relativity Physics</p>
+    </div>
+
+    <div class="simulation-container">
+        <canvas id="canvas" width="800" height="800"></canvas>
+        <div class="loading" id="loading">Loading WebAssembly module...</div>
+    </div>
+
+    <div class="controls">
+        <div class="control-group">
+            <label>Black Hole Mass (×10²⁸ kg)</label>
+            <input type="range" id="massSlider" min="1" max="10" value="6" step="0.5">
+            <span id="massValue">6.0</span>
+        </div>
+        
+        <div class="control-group">
+            <label>Ray Count</label>
+            <input type="range" id="raySlider" min="10" max="100" value="50" step="10">
+            <span id="rayValue">50</span>
+        </div>
+        
+        <div class="control-group">
+            <button id="resetBtn">Reset Simulation</button>
+        </div>
+        
+        <div class="control-group">
+            <button id="pauseBtn">Pause/Resume</button>
+        </div>
+    </div>
+
+    <div class="info-panel">
+        <p><strong>Schwarzschild Radius:</strong> <span id="schwarzschildRadius">Calculating...</span></p>
+        <p><strong>Active Rays:</strong> <span id="activeRays">50</span></p>
+        <button>Made by <a href="https://github.com/dr0pdev" target="_blank">dr0pdev</a></button>
+        <button onclick="window.open('https://github.com/dr0pdev', '_blank')">
+            <img src="https://github.com/dr0pdev.png" alt="GitHub Profile" width="50" height="50">
+        </button>
+    </div>
+
+    <script type="module">
+        import init, { 
+            init_simulation, 
+            update_simulation, 
+            get_ray_positions, 
+            get_black_hole_position, 
+            update_black_hole_mass, 
+            get_ray_count,
+            get_simulation_info,
+            reset_simulation,
+            update_ray_count
+        } from './pkg/gargantua.js';
+
+        let animationId = null;
+        let isPaused = false;
+        let rayTrails = []; // Store ray trails for drawing
+
+        async function run() {
+            try {
+                // Initialize the wasm module
+                await init();
+                
+                // Hide loading indicator
+                document.getElementById('loading').style.display = 'none';
+                
+                // Initialize the simulation
+                init_simulation(800, 800);
+                
+                // Get simulation info
+                const info = get_simulation_info();
+                console.log(info);
+                
+                // Update Schwarzschild radius display
+                document.getElementById('schwarzschildRadius').textContent = 
+                    (2 * 6.6743e-11 * 6e28 / (299792458 * 299792458)).toExponential(2) + ' m';
+                
+                // Setup canvas and start rendering
+                setupCanvas();
+                startRendering();
+                
+                // Setup controls
+                setupControls();
+                
+            } catch (error) {
+                console.error('Failed to initialize WebAssembly module:', error);
+                document.getElementById('loading').innerHTML = 
+                    '<div class="error">Failed to load simulation. Please check the console for details.</div>';
+            }
+        }
+
+        function setupCanvas() {
+            const canvas = document.getElementById('canvas');
+            const ctx = canvas.getContext('2d');
+            
+            // Store context for rendering
+            window.canvas = canvas;
+            window.ctx = ctx;
+        }
+
+        function startRendering() {
+            function render() {
+                if (!isPaused) {
+                    // Update the simulation
+                    update_simulation();
+                    
+                    // Clear canvas
+                    window.ctx.fillStyle = 'rgba(5, 5, 20, 255)';
+                    window.ctx.fillRect(0, 0, 800, 800);
+                    
+                    // Draw black hole
+                    drawBlackHole();
+                    
+                    // Draw rays
+                    drawRays();
+                }
+                
+                animationId = requestAnimationFrame(render);
+            }
+            
+            render();
+        }
+
+        function drawBlackHole() {
+            const ctx = window.ctx;
+            const bhData = get_black_hole_position();
+            const centerX = bhData[0];
+            const centerY = bhData[1];
+            const radius = Math.max(bhData[2], 5); // Minimum visible size
+            
+            // Draw accretion disk
+            for (let i = 0; i < 10; i++) {
+                const currentRadius = radius * (1 + i * 0.08);
+                const alpha = 0.9 - (i * 0.05);
+                
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, currentRadius, 0, 2 * Math.PI);
+                ctx.fillStyle = `rgba(255, ${30 + i * 8}, 0, ${alpha})`;
+                ctx.fill();
+            }
+            
+            // Draw event horizon
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+            ctx.fillStyle = 'black';
+            ctx.fill();
+            
+            // Draw outline
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+            ctx.strokeStyle = 'orange';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+        }
+
+        function drawRays() {
+            const ctx = window.ctx;
+            const rayData = get_ray_positions();
+            
+            // Initialize ray trails if needed
+            if (rayTrails.length === 0) {
+                const rayCount = get_ray_count();
+                rayTrails = Array(rayCount).fill().map(() => []);
+            }
+            
+            // Process ray data (x, y, active) triplets
+            for (let i = 0; i < rayData.length; i += 3) {
+                const rayIndex = i / 3;
+                const x = rayData[i];
+                const y = rayData[i + 1];
+                const active = rayData[i + 2] > 0.5;
+                
+                if (active && rayIndex < rayTrails.length) {
+                    // Add current position to trail
+                    rayTrails[rayIndex].push({x, y});
+                    
+                    // Limit trail length
+                    if (rayTrails[rayIndex].length > 50) {
+                        rayTrails[rayIndex].shift();
+                    }
+                }
+                
+                // Draw trail
+                if (rayTrails[rayIndex] && rayTrails[rayIndex].length > 1) {
+                    ctx.beginPath();
+                    ctx.moveTo(rayTrails[rayIndex][0].x, rayTrails[rayIndex][0].y);
+                    
+                    for (let j = 1; j < rayTrails[rayIndex].length; j++) {
+                        const alpha = j / rayTrails[rayIndex].length;
+                        ctx.lineTo(rayTrails[rayIndex][j].x, rayTrails[rayIndex][j].y);
+                    }
+                    
+                    ctx.strokeStyle = `rgba(255, 255, 255, ${active ? 0.8 : 0.3})`;
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                }
+                
+                // Draw current ray position
+                if (active) {
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+                    ctx.fillRect(x - 2, y - 2, 4, 4);
+                }
+            }
+        }
+
+        function setupControls() {
+            // Mass slider
+            const massSlider = document.getElementById('massSlider');
+            const massValue = document.getElementById('massValue');
+            
+            massSlider.addEventListener('input', (e) => {
+                const mass = parseFloat(e.target.value);
+                massValue.textContent = mass.toFixed(1);
+                update_black_hole_mass(mass * 1e28);
+                
+                // Update Schwarzschild radius display in real-time
+                const G = 6.6743e-11;
+                const c = 299792458;
+                const schwarzschildRadius = (2 * G * mass * 1e28) / (c * c);
+                document.getElementById('schwarzschildRadius').textContent = 
+                    schwarzschildRadius.toExponential(2) + ' m';
+            });
+            
+            // Ray count slider
+            const raySlider = document.getElementById('raySlider');
+            const rayValue = document.getElementById('rayValue');
+            
+            raySlider.addEventListener('input', (e) => {
+                const count = parseInt(e.target.value);
+                rayValue.textContent = count;
+                document.getElementById('activeRays').textContent = count;
+                update_ray_count(count);
+                // Clear ray trails when count changes
+                rayTrails = [];
+            });
+            
+            // Reset button
+            document.getElementById('resetBtn').addEventListener('click', () => {
+                // Reset simulation
+                console.log('Resetting simulation...');
+                reset_simulation();
+                // Clear ray trails
+                rayTrails = [];
+            });
+            
+            // Pause/Resume button
+            document.getElementById('pauseBtn').addEventListener('click', () => {
+                isPaused = !isPaused;
+                document.getElementById('pauseBtn').textContent = isPaused ? 'Resume' : 'Pause';
+            });
+        }
+
+        // Start the application
+        run();
+    </script>
+</body>
+</html>
