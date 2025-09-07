@@ -164,23 +164,14 @@ impl Simulation {
 
         let rays: Vec<Ray> = (0..num_rays)
             .map(|i| {
-                // Create a very wide spread pattern for high-resolution canvas
-                let spread_angle = (i as f64 / (num_rays - 1) as f64) * 2.0; // 2.0 radians spread (~115°)
-                let offset_distance = 120.0; // Very large distance for 800x800 canvas
-                
-                let ray_start_x = start_x + spread_angle.cos() * offset_distance;
-                let ray_start_y = start_y + spread_angle.sin() * offset_distance;
+                let mut ray = Ray::new(start_x, start_y);
 
-                let mut ray = Ray::new(ray_start_x, ray_start_y);
+                // Create rays with slightly different angles for spread pattern (matching main.rs)
+                let angle_offset = (i as f64 - num_rays as f64 / 2.0) * 0.05; // Small angle variations
+                let velocity_x = 10.0 * angle_offset.cos() + 10.;
+                let velocity_y = 10.0 * angle_offset.sin() + 10.;
 
-                let dx = black_hole.position.x as f64 - ray_start_x;
-                let dy = black_hole.position.y as f64 - ray_start_y;
-                let distance = (dx * dx + dy * dy).sqrt();
-
-                let speed = 10.0;
-                let velocity_x = (dx / distance) * speed;
-                let velocity_y = (dy / distance) * speed;
-
+                // Initialize the ray's velocity properly
                 ray.initialize_velocity(&black_hole, Vec2::new(velocity_x as f32, velocity_y as f32));
                 ray
             })

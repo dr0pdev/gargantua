@@ -96,26 +96,16 @@ pub fn reset_simulation() {
             let start_y = 50.0;
             
             for (i, ray) in sim.rays.iter_mut().enumerate() {
-                // Use the same very wide spread pattern as initialization for high-resolution canvas
-                let spread_angle = (i as f64 / (num_rays - 1) as f64) * 2.0; // 2.0 radians spread (~115°)
-                let offset_distance = 120.0; // Very large distance for 800x800 canvas
-                
-                let ray_start_x = start_x + spread_angle.cos() * offset_distance;
-                let ray_start_y = start_y + spread_angle.sin() * offset_distance;
-                
-                ray.x = ray_start_x;
-                ray.y = ray_start_y;
+                // Reset to same starting position (matching main.rs approach)
+                ray.x = start_x;
+                ray.y = start_y;
                 ray.disabled = false;
                 ray.trail.clear();
                 
-                // Recalculate direction toward black hole
-                let dx = sim.black_hole.position.x as f64 - ray_start_x;
-                let dy = sim.black_hole.position.y as f64 - ray_start_y;
-                let distance = (dx * dx + dy * dy).sqrt();
-                
-                let speed = 10.0;
-                let velocity_x = (dx / distance) * speed;
-                let velocity_y = (dy / distance) * speed;
+                // Create rays with slightly different angles for spread pattern (matching main.rs)
+                let angle_offset = (i as f64 - num_rays as f64 / 2.0) * 0.05; // Small angle variations
+                let velocity_x = 10.0 * angle_offset.cos() + 10.;
+                let velocity_y = 10.0 * angle_offset.sin() + 10.;
                 
                 ray.initialize_velocity(&sim.black_hole, glam::Vec2::new(velocity_x as f32, velocity_y as f32));
             }
@@ -148,22 +138,12 @@ pub fn update_ray_count(new_count: usize) {
                 let start_y = 50.0;
                 
                 for i in current_count..new_count {
-                    // Use the same very wide spread pattern as initialization for high-resolution canvas
-                    let spread_angle = (i as f64 / (new_count - 1) as f64) * 2.0; // 2.0 radians spread (~115°)
-                    let offset_distance = 120.0; // Very large distance for 800x800 canvas
+                    let mut ray = simulation::Ray::new(start_x, start_y);
                     
-                    let ray_start_x = start_x + spread_angle.cos() * offset_distance;
-                    let ray_start_y = start_y + spread_angle.sin() * offset_distance;
-                    
-                    let mut ray = simulation::Ray::new(ray_start_x, ray_start_y);
-                    
-                    let dx = sim.black_hole.position.x as f64 - ray_start_x;
-                    let dy = sim.black_hole.position.y as f64 - ray_start_y;
-                    let distance = (dx * dx + dy * dy).sqrt();
-                    
-                    let speed = 10.0;
-                    let velocity_x = (dx / distance) * speed;
-                    let velocity_y = (dy / distance) * speed;
+                    // Create rays with slightly different angles for spread pattern (matching main.rs)
+                    let angle_offset = (i as f64 - new_count as f64 / 2.0) * 0.05; // Small angle variations
+                    let velocity_x = 10.0 * angle_offset.cos() + 10.;
+                    let velocity_y = 10.0 * angle_offset.sin() + 10.;
                     
                     ray.initialize_velocity(&sim.black_hole, glam::Vec2::new(velocity_x as f32, velocity_y as f32));
                     sim.rays.push(ray);
